@@ -1,0 +1,149 @@
+<div class="personal-summary">
+  <div class="summary-item">
+    <span class="summary-label">Total ingresos</span>
+    <span class="summary-value income">{{ formatQ(totalIngresos()) }}</span>
+  </div>
+  <div class="summary-item">
+    <span class="summary-label">Total gastos</span>
+    <span class="summary-value expense">{{ formatQ(totalGastos()) }}</span>
+  </div>
+  <div class="summary-item">
+    <span class="summary-label">Balance</span>
+    <span class="summary-value" [class.income]="balanceNegocio() >= 0" [class.expense]="balanceNegocio() < 0">
+      {{ formatQ(balanceNegocio()) }}
+    </span>
+  </div>
+</div>
+
+<div class="personal">
+  <section class="form-panel">
+    <h2>{{ editingId ? 'Editar movimiento' : 'Registrar movimiento' }}</h2>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+      <div class="type-toggle">
+        <label class="type-option" [class.active]="form.value.type === 'INGRESO'">
+          <input type="radio" formControlName="type" value="INGRESO" />
+          Ingreso
+        </label>
+        <label class="type-option" [class.active]="form.value.type === 'GASTO'">
+          <input type="radio" formControlName="type" value="GASTO" />
+          Gasto
+        </label>
+      </div>
+
+      <div class="field">
+        <label for="category">Categoría</label>
+        <select id="category" formControlName="category">
+          @for (cat of categoriesForType(form.value.type ?? null); track cat.value) {
+            <option [value]="cat.value">{{ cat.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="amount">Monto (Q)</label>
+        <input id="amount" type="number" step="0.01" min="0" formControlName="amount" placeholder="0.00" />
+        @if (form.get('amount')?.touched && form.get('amount')?.invalid) {
+          <span class="field-error">Ingresa un monto válido mayor a 0</span>
+        }
+      </div>
+
+      <div class="field">
+        <label for="description">Descripción (opcional)</label>
+        <input id="description" type="text" formControlName="description" placeholder="ej. venta del día" />
+      </div>
+
+      @if (errorMessage) {
+        <div class="form-error">{{ errorMessage }}</div>
+      }
+
+      <div class="form-actions">
+        <button type="submit" class="submit-btn" [disabled]="isSubmitting">
+          {{ isSubmitting ? 'Guardando...' : (editingId ? 'Actualizar' : 'Registrar') }}
+        </button>
+        @if (editingId) {
+          <button type="button" class="cancel-btn" (click)="cancelEdit()">Cancelar</button>
+        }
+      </div>
+    </form>
+  </section>
+
+  <section class="history-panel">
+    <div class="history-header">
+      <h2>Historial</h2>
+
+      <div class="history-filters">
+        <select class="filter-select" [(ngModel)]="filterMonth" [ngModelOptions]="{ standalone: true }">
+          <option value="TODOS">Todos los periodos</option>
+          @for (mes of availableMonths(); track mes.value) {
+            <option [value]="mes.value">{{ mes.label }}</option>
+          }
+        </select>
+
+        <select
+          class="filter-select"
+          [value]="filterType"
+          (change)="onFilterTypeChange($any($event.target).value)"
+        >
+          <option value="TODOS">Todos</option>
+          <option value="INGRESO">Ingresos</option>
+          <option value="GASTO">Gastos</option>
+        </select>
+
+        <select class="filter-select" [(ngModel)]="filterCategory" [ngModelOptions]="{ standalone: true }">
+          <option value="TODAS">Todas las categorías</option>
+          @for (cat of categoriesForFilter(); track cat.value) {
+            <option [value]="cat.value">{{ cat.label }}</option>
+          }
+        </select>
+
+        <button
+          type="button"
+          class="pdf-btn"
+          (click)="exportarPDF()"
+          [disabled]="filteredMovements().length === 0"
+        >
+          Descargar PDF
+        </button>
+      </div>
+    </div>
+
+    @if (filteredMovements().length === 0) {
+      <p class="empty-state">
+        @if (movementService.movements().length === 0) {
+          Todavía no hay movimientos registrados.
+        } @else {
+          No hay movimientos que coincidan con este filtro.
+        }
+      </p>
+    } @else {
+      <div class="history-list">
+        @for (mov of filteredMovements(); track mov.id) {
+          <div class="history-item">
+            <div class="history-main">
+              <div class="history-info">
+                <span class="history-category">{{ categoryLabel(mov.category) }}</span>
+                @if (mov.description) {
+                  <span class="history-description">{{ mov.description }}</span>
+                }
+                <span class="history-date">{{ formatDate(mov.date) }}</span>
+              </div>
+              <span
+                class="history-amount"
+                [class.income]="mov.type === 'INGRESO'"
+                [class.expense]="mov.type === 'GASTO'"
+              >
+                {{ mov.type === 'INGRESO' ? '+' : '-' }}{{ formatQ(mov.amount) }}
+              </span>
+            </div>
+
+            <div class="history-actions">
+              <button type="button" class="action-btn edit" (click)="startEdit(mov)">Editar</button>
+              <button type="button" class="action-btn delete" (click)="confirmDelete(mov)">Eliminar</button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </section>
+</div>
