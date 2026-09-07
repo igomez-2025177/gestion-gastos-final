@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { MovementService } from '../../services/movement.service';
 import { Personal } from '../personal/personal';
+import { Negocio } from '../negocio/negocio';
 
 interface AccountTab {
   id: string;
@@ -13,7 +14,7 @@ interface AccountTab {
 
 @Component({
   selector: 'app-dashboard',
-  imports: [CommonModule, Personal],
+  imports: [CommonModule, Personal, Negocio],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
@@ -25,27 +26,30 @@ export class Dashboard implements OnInit {
   accountTabs: AccountTab[] = [
     { id: 'menu', label: 'Menú', disabled: false },
     { id: 'personal', label: 'Personal', disabled: false },
-    { id: 'negocio', label: 'Negocio', disabled: true },
+    { id: 'negocio', label: 'Negocio', disabled: false },
     { id: 'fondo', label: 'Fondo de inversión', disabled: true },
   ];
 
   activeTab = 'menu';
 
+  // solo movimientos PERSONALES cuentan para estas tarjetas
   balance = computed(() => {
     let total = 0;
     for (const mov of this.movementService.movements()) {
+      if (mov.isBusiness) continue;
       total += mov.type === 'INGRESO' ? mov.amount : -mov.amount;
     }
     return total;
   });
 
-  ingresosMes = computed(() => this.sumarDelMes('INGRESO'));
-  gastosMes = computed(() => this.sumarDelMes('GASTO'));
+  ingresosMes = computed(() => this.sumarDelMes('INGRESO', false));
+  gastosMes = computed(() => this.sumarDelMes('GASTO', false));
 
   impuestos = computed(() => {
     const now = new Date();
     let iva = 0;
     for (const mov of this.movementService.movements()) {
+      if (mov.isBusiness) continue;
       const fecha = new Date(mov.date);
       const esDelMesActual = fecha.getMonth() === now.getMonth() && fecha.getFullYear() === now.getFullYear();
       if (mov.type === 'GASTO' && esDelMesActual) {
@@ -55,18 +59,28 @@ export class Dashboard implements OnInit {
     return iva;
   });
 
+  // balance de negocio (todo el historico), solo movimientos marcados como negocio
+  negocio = computed(() => {
+    let total = 0;
+    for (const mov of this.movementService.movements()) {
+      if (!mov.isBusiness) continue;
+      total += mov.type === 'INGRESO' ? mov.amount : -mov.amount;
+    }
+    return total;
+  });
+
   fondoInversion: number | null = null;
-  negocio: number | null = null;
 
   ngOnInit(): void {
     this.authService.getMe().subscribe();
     this.movementService.getAll().subscribe();
   }
 
-  private sumarDelMes(type: 'INGRESO' | 'GASTO'): number {
+  private sumarDelMes(type: 'INGRESO' | 'GASTO', isBusiness: boolean): number {
     const now = new Date();
     let total = 0;
     for (const mov of this.movementService.movements()) {
+      if (mov.isBusiness !== isBusiness) continue;
       const fecha = new Date(mov.date);
       const esDelMesActual = fecha.getMonth() === now.getMonth() && fecha.getFullYear() === now.getFullYear();
       if (mov.type === type && esDelMesActual) {

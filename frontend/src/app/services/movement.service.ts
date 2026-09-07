@@ -5,14 +5,9 @@ import { Observable, tap } from 'rxjs';
 export type MovementType = 'INGRESO' | 'GASTO';
 
 export type MovementCategory =
-  | 'ALIMENTACION'
-  | 'TRANSPORTE'
-  | 'SERVICIOS'
-  | 'SALUD'
-  | 'SUELDO'
-  | 'BONO'
-  | 'VENTA'
-  | 'INVERSION'
+  | 'ALIMENTACION' | 'TRANSPORTE' | 'SERVICIOS' | 'SALUD'
+  | 'SUELDO' | 'BONO' | 'VENTA' | 'INVERSION'
+  | 'SERVICIO_PRESTADO' | 'PROVEEDORES' | 'NOMINA' | 'ALQUILER' | 'MARKETING' | 'MANTENIMIENTO'
   | 'OTROS';
 
 export interface Movement {
@@ -25,6 +20,7 @@ export interface Movement {
   description: string | null;
   date: string;
   createdAt: string;
+  isBusiness: boolean;
   userId: string;
 }
 
@@ -33,6 +29,7 @@ export interface CreateMovementPayload {
   category: MovementCategory;
   amount: number;
   description?: string;
+  isBusiness?: boolean;
 }
 
 const IVA_RATE = 0.12;

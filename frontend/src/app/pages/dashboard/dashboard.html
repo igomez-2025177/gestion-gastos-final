@@ -51,11 +51,15 @@
         </div>
         <div class="summary-card">
           <span class="summary-label">Negocio</span>
-          <span class="summary-value" [class.na]="negocio === null">{{ formatMoney(negocio) }}</span>
+          <span class="summary-value" [class.income]="negocio() >= 0" [class.expense]="negocio() < 0">
+            {{ formatMoney(negocio()) }}
+          </span>
         </div>
       </div>
     } @else if (activeTab === 'personal') {
       <app-personal></app-personal>
+    } @else if (activeTab === 'negocio') {
+      <app-negocio></app-negocio>
     } @else {
       <div class="tab-empty">
         <p>No disponible</p>
