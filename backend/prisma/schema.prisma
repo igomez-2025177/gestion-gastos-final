@@ -18,17 +18,24 @@ enum MovementType {
 }
 
 enum MovementCategory {
-  // categorías de gasto
+  // categorías de gasto personal
   ALIMENTACION
   TRANSPORTE
   SERVICIOS
   SALUD
-  // categorías de ingreso
+  // categorías de ingreso personal
   SUELDO
   BONO
   VENTA
   INVERSION
-  // categoría comodín, sirve para cualquiera de los dos tipos
+  // categorías de negocio
+  SERVICIO_PRESTADO
+  PROVEEDORES
+  NOMINA
+  ALQUILER
+  MARKETING
+  MANTENIMIENTO
+  // comodín, sirve en cualquier contexto
   OTROS
 }
 
@@ -54,6 +61,7 @@ model Movement {
   description String?
   date        DateTime         @default(now())
   createdAt   DateTime         @default(now())
+  isBusiness  Boolean          @default(false)
   userId      String
   user        User             @relation(fields: [userId], references: [id])
   @@map("movements")
