@@ -17,6 +17,7 @@ export class Login implements OnInit {
   errorMessage = '';
   isLoading = false;
   sessionExpiredMessage = false;
+  showPassword = false;
 
   private readonly GOOGLE_CLIENT_ID =
     '966740166244-fh3l75pimk5q490k9u0s31n03me6fikj.apps.googleusercontent.com';
@@ -41,11 +42,19 @@ export class Login implements OnInit {
       callback: (response: any) => this.handleGoogleLogin(response),
     });
 
-    google.accounts.id.renderButton(document.getElementById('google-btn'), {
+    // el boton real de Google se dibuja escondido (no se puede repintar a nuestro estilo).
+    // el boton que se ve (.btn-google) le dispara un clic programado a este de aqui
+    google.accounts.id.renderButton(document.getElementById('google-btn-hidden'), {
       theme: 'filled_black',
       size: 'large',
-      width: 300,
     });
+  }
+
+  triggerGoogleLogin(): void {
+    const hiddenButton = document.querySelector(
+      '#google-btn-hidden div[role="button"]'
+    ) as HTMLElement | null;
+    hiddenButton?.click();
   }
 
   onSubmit(): void {
