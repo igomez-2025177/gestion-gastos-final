@@ -1,0 +1,128 @@
+<div class="personal-summary fondo-summary">
+  <div class="summary-item">
+    <span class="summary-label">Total aportado</span>
+    <span class="summary-value income">{{ formatQ(totalIngresos()) }}</span>
+  </div>
+  <div class="summary-item">
+    <span class="summary-label">Total retirado</span>
+    <span class="summary-value expense">{{ formatQ(totalGastos()) }}</span>
+  </div>
+  <div class="summary-item">
+    <span class="summary-label">Balance del fondo</span>
+    <span class="summary-value" [class.income]="balanceFondo() >= 0" [class.expense]="balanceFondo() < 0">
+      {{ formatQ(balanceFondo()) }}
+    </span>
+  </div>
+</div>
+
+<section class="quick-add">
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="quick-add-form">
+    <div class="type-toggle">
+      <label class="type-option" [class.active]="form.value.type === 'INGRESO'">
+        <input type="radio" formControlName="type" value="INGRESO" />
+        Ingreso
+      </label>
+      <label class="type-option" [class.active]="form.value.type === 'GASTO'">
+        <input type="radio" formControlName="type" value="GASTO" />
+        Gasto
+      </label>
+    </div>
+
+    <select formControlName="category" class="quick-select">
+      @for (cat of categoriesForType(form.value.type ?? null); track cat.value) {
+        <option [value]="cat.value">{{ cat.label }}</option>
+      }
+    </select>
+
+    <input type="number" step="0.01" min="0" formControlName="amount" placeholder="Monto (Q)" class="quick-input" />
+
+    <input type="text" formControlName="description" placeholder="Descripción (opcional)" class="quick-input quick-description" />
+
+    <button type="submit" class="quick-submit" [disabled]="isSubmitting">
+      {{ isSubmitting ? '...' : (editingId ? 'Actualizar' : 'Agregar') }}
+    </button>
+
+    @if (editingId) {
+      <button type="button" class="quick-cancel" (click)="cancelEdit()">Cancelar</button>
+    }
+  </form>
+
+  @if (form.get('amount')?.touched && form.get('amount')?.invalid) {
+    <span class="field-error">Ingresa un monto válido mayor a 0</span>
+  }
+  @if (errorMessage) {
+    <div class="form-error">{{ errorMessage }}</div>
+  }
+</section>
+
+<div class="fondo-filters">
+  <select class="filter-select" [(ngModel)]="filterMonth" [ngModelOptions]="{ standalone: true }">
+    <option value="TODOS">Todos los periodos</option>
+    @for (mes of availableMonths(); track mes.value) {
+      <option [value]="mes.value">{{ mes.label }}</option>
+    }
+  </select>
+
+  <select
+    class="filter-select"
+    [value]="filterType"
+    (change)="onFilterTypeChange($any($event.target).value)"
+  >
+    <option value="TODOS">Todos</option>
+    <option value="INGRESO">Solo ingresos</option>
+    <option value="GASTO">Solo gastos</option>
+  </select>
+</div>
+
+<section class="category-accordion">
+  @if (categoryGroups().length === 0) {
+    <p class="empty-state">
+      @if (movementService.movements().length === 0) {
+        Todavía no hay movimientos registrados en el fondo.
+      } @else {
+        No hay movimientos que coincidan con este filtro.
+      }
+    </p>
+  } @else {
+    @for (group of categoryGroups(); track group.category) {
+      <div class="category-group" [class.expanded]="isExpanded(group.category)">
+        <button type="button" class="category-header" (click)="toggleCategory(group.category)">
+          <span class="category-chevron">{{ isExpanded(group.category) ? '▾' : '▸' }}</span>
+          <span class="category-name">{{ group.label }}</span>
+          <span class="category-count">{{ group.movements.length }} movimiento(s)</span>
+          <span class="category-subtotal" [class.income]="group.subtotal >= 0" [class.expense]="group.subtotal < 0">
+            {{ group.subtotal >= 0 ? '+' : '' }}{{ formatQ(group.subtotal) }}
+          </span>
+        </button>
+
+        @if (isExpanded(group.category)) {
+          <div class="category-body">
+            @for (mov of group.movements; track mov.id) {
+              <div class="category-row">
+                <div class="category-row-info">
+                  @if (mov.description) {
+                    <span class="category-row-desc">{{ mov.description }}</span>
+                  } @else {
+                    <span class="category-row-desc muted">Sin descripción</span>
+                  }
+                  <span class="category-row-date">{{ formatDate(mov.date) }}</span>
+                </div>
+                <span
+                  class="category-row-amount"
+                  [class.income]="mov.type === 'INGRESO'"
+                  [class.expense]="mov.type === 'GASTO'"
+                >
+                  {{ mov.type === 'INGRESO' ? '+' : '-' }}{{ formatQ(mov.amount) }}
+                </span>
+                <div class="category-row-actions">
+                  <button type="button" (click)="startEdit(mov)">Editar</button>
+                  <button type="button" (click)="confirmDelete(mov)">Eliminar</button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  }
+</section>

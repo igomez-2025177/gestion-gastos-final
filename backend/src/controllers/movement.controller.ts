@@ -1,26 +1,34 @@
 import { Response } from "express";
 import { prisma } from "../lib/prisma";
 import { AuthRequest } from "../middlewares/auth.middleware";
-import { MovementType, MovementCategory } from "../generated/prisma/client";
+import { MovementType, MovementCategory, MovementContext } from "../generated/prisma/client";
 
 const VALID_TYPES = Object.values(MovementType);
+const VALID_CONTEXTS = Object.values(MovementContext);
 
-const PERSONAL_INCOME_CATEGORIES: MovementCategory[] = ["SUELDO", "BONO", "VENTA", "INVERSION", "OTROS"];
-const PERSONAL_EXPENSE_CATEGORIES: MovementCategory[] = ["ALIMENTACION", "TRANSPORTE", "SERVICIOS", "SALUD", "OTROS"];
+const CATEGORY_MAP: Record<MovementContext, { INGRESO: MovementCategory[]; GASTO: MovementCategory[] }> = {
+  PERSONAL: {
+    INGRESO: ["SUELDO", "BONO", "VENTA", "INVERSION", "OTROS"],
+    GASTO: ["ALIMENTACION", "TRANSPORTE", "SERVICIOS", "SALUD", "OTROS"],
+  },
+  NEGOCIO: {
+    INGRESO: ["VENTA", "SERVICIO_PRESTADO", "OTROS"],
+    GASTO: ["PROVEEDORES", "NOMINA", "ALQUILER", "MARKETING", "MANTENIMIENTO", "OTROS"],
+  },
+  FONDO: {
+    INGRESO: ["RENDIMIENTO", "APORTACION", "OTROS"],
+    GASTO: ["RETIRO", "COMISION", "OTROS"],
+  },
+};
 
-const NEGOCIO_INCOME_CATEGORIES: MovementCategory[] = ["VENTA", "SERVICIO_PRESTADO", "OTROS"];
-const NEGOCIO_EXPENSE_CATEGORIES: MovementCategory[] = ["PROVEEDORES", "NOMINA", "ALQUILER", "MARKETING", "MANTENIMIENTO", "OTROS"];
-
-function isCategoryValid(type: MovementType, category: MovementCategory, isBusiness: boolean): boolean {
-  const income = isBusiness ? NEGOCIO_INCOME_CATEGORIES : PERSONAL_INCOME_CATEGORIES;
-  const expense = isBusiness ? NEGOCIO_EXPENSE_CATEGORIES : PERSONAL_EXPENSE_CATEGORIES;
-  return type === "INGRESO" ? income.includes(category) : expense.includes(category);
+function isCategoryValid(type: MovementType, category: MovementCategory, context: MovementContext): boolean {
+  return CATEGORY_MAP[context][type].includes(category);
 }
 
 export async function createMovement(req: AuthRequest, res: Response) {
   try {
     const userId = req.user?.userId;
-    const { type, category, amount, description, date, isBusiness } = req.body;
+    const { type, category, amount, description, date, context } = req.body;
 
     if (!type || !category || amount === undefined) {
       return res.status(400).json({ error: "Faltan campos: type, category, amount" });
@@ -30,9 +38,9 @@ export async function createMovement(req: AuthRequest, res: Response) {
       return res.status(400).json({ error: `Tipo inválido, debe ser uno de: ${VALID_TYPES.join(", ")}` });
     }
 
-    const esNegocio = !!isBusiness;
+    const finalContext: MovementContext = context && VALID_CONTEXTS.includes(context) ? context : "PERSONAL";
 
-    if (!isCategoryValid(type, category, esNegocio)) {
+    if (!isCategoryValid(type, category, finalContext)) {
       return res.status(400).json({ error: "Categoría inválida para este tipo de movimiento" });
     }
 
@@ -49,7 +57,7 @@ export async function createMovement(req: AuthRequest, res: Response) {
         description: description || null,
         date: date ? new Date(date) : new Date(),
         userId: userId!,
-        isBusiness: esNegocio,
+        context: finalContext,
       },
     });
 
@@ -91,7 +99,7 @@ export async function updateMovement(req: AuthRequest, res: Response) {
     const finalType = type ?? existing.type;
     const finalCategory = category ?? existing.category;
 
-    if (category && !isCategoryValid(finalType, finalCategory, existing.isBusiness)) {
+    if (category && !isCategoryValid(finalType, finalCategory, existing.context)) {
       return res.status(400).json({ error: "Categoría inválida para este tipo de movimiento" });
     }
 
