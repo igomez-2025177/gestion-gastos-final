@@ -47,7 +47,9 @@
         </div>
         <div class="summary-card">
           <span class="summary-label">Fondo de inversión</span>
-          <span class="summary-value" [class.na]="fondoInversion === null">{{ formatMoney(fondoInversion) }}</span>
+          <span class="summary-value" [class.income]="fondoInversion() >= 0" [class.expense]="fondoInversion() < 0">
+            {{ formatMoney(fondoInversion()) }}
+          </span>
         </div>
         <div class="summary-card">
           <span class="summary-label">Negocio</span>
@@ -60,10 +62,8 @@
       <app-personal></app-personal>
     } @else if (activeTab === 'negocio') {
       <app-negocio></app-negocio>
-    } @else {
-      <div class="tab-empty">
-        <p>No disponible</p>
-      </div>
+    } @else if (activeTab === 'fondo') {
+      <app-fondo></app-fondo>
     }
   </main>
 </div>

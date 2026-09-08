@@ -96,15 +96,6 @@
             <option [value]="cat.value">{{ cat.label }}</option>
           }
         </select>
-
-        <button
-          type="button"
-          class="pdf-btn"
-          (click)="exportarPDF()"
-          [disabled]="filteredMovements().length === 0"
-        >
-          Descargar PDF
-        </button>
       </div>
     </div>
 
