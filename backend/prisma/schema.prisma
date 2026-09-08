@@ -17,6 +17,12 @@ enum MovementType {
   GASTO
 }
 
+enum MovementContext {
+  PERSONAL
+  NEGOCIO
+  FONDO
+}
+
 enum MovementCategory {
   // categorías de gasto personal
   ALIMENTACION
@@ -35,6 +41,11 @@ enum MovementCategory {
   ALQUILER
   MARKETING
   MANTENIMIENTO
+  // categorías de fondo de inversión
+  RENDIMIENTO
+  APORTACION
+  RETIRO
+  COMISION
   // comodín, sirve en cualquier contexto
   OTROS
 }
@@ -43,7 +54,8 @@ model User {
   id        String     @id @default(uuid())
   name      String
   email     String     @unique
-  password  String
+  password  String?
+  googleId  String?    @unique
   role      Role       @default(USER)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
@@ -61,7 +73,7 @@ model Movement {
   description String?
   date        DateTime         @default(now())
   createdAt   DateTime         @default(now())
-  isBusiness  Boolean          @default(false)
+  context     MovementContext  @default(PERSONAL)
   userId      String
   user        User             @relation(fields: [userId], references: [id])
   @@map("movements")

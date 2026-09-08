@@ -3,11 +3,13 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 
 export type MovementType = 'INGRESO' | 'GASTO';
+export type MovementContext = 'PERSONAL' | 'NEGOCIO' | 'FONDO';
 
 export type MovementCategory =
   | 'ALIMENTACION' | 'TRANSPORTE' | 'SERVICIOS' | 'SALUD'
   | 'SUELDO' | 'BONO' | 'VENTA' | 'INVERSION'
   | 'SERVICIO_PRESTADO' | 'PROVEEDORES' | 'NOMINA' | 'ALQUILER' | 'MARKETING' | 'MANTENIMIENTO'
+  | 'RENDIMIENTO' | 'APORTACION' | 'RETIRO' | 'COMISION'
   | 'OTROS';
 
 export interface Movement {
@@ -20,7 +22,7 @@ export interface Movement {
   description: string | null;
   date: string;
   createdAt: string;
-  isBusiness: boolean;
+  context: MovementContext;
   userId: string;
 }
 
@@ -29,7 +31,7 @@ export interface CreateMovementPayload {
   category: MovementCategory;
   amount: number;
   description?: string;
-  isBusiness?: boolean;
+  context?: MovementContext;
 }
 
 const IVA_RATE = 0.12;

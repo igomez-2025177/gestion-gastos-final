@@ -13,30 +13,34 @@ interface MonthOption {
   label: string;
 }
 
+interface CategoryGroup {
+  category: MovementCategory;
+  label: string;
+  movements: Movement[];
+  subtotal: number;
+}
+
 type HistoryFilter = 'TODOS' | MovementType;
 
 @Component({
-  selector: 'app-negocio',
+  selector: 'app-fondo',
   imports: [CommonModule, ReactiveFormsModule, FormsModule],
-  templateUrl: './negocio.html',
-  styleUrl: './negocio.css',
+  templateUrl: './fondo.html',
+  styleUrl: './fondo.css',
 })
-export class Negocio implements OnInit {
+export class Fondo implements OnInit {
   private fb = inject(FormBuilder);
   public movementService = inject(MovementService);
 
   incomeCategories: CategoryOption[] = [
-    { value: 'VENTA', label: 'Venta' },
-    { value: 'SERVICIO_PRESTADO', label: 'Servicio prestado' },
+    { value: 'RENDIMIENTO', label: 'Rendimiento' },
+    { value: 'APORTACION', label: 'Aportación' },
     { value: 'OTROS', label: 'Otros' },
   ];
 
   expenseCategories: CategoryOption[] = [
-    { value: 'PROVEEDORES', label: 'Proveedores' },
-    { value: 'NOMINA', label: 'Nómina' },
-    { value: 'ALQUILER', label: 'Alquiler' },
-    { value: 'MARKETING', label: 'Marketing' },
-    { value: 'MANTENIMIENTO', label: 'Mantenimiento' },
+    { value: 'RETIRO', label: 'Retiro' },
+    { value: 'COMISION', label: 'Comisión' },
     { value: 'OTROS', label: 'Otros' },
   ];
 
@@ -47,13 +51,14 @@ export class Negocio implements OnInit {
 
   editingId: string | null = null;
 
+  expandedCategories = new Set<MovementCategory>();
+
   filterType: HistoryFilter = 'TODOS';
-  filterCategory: MovementCategory | 'TODAS' = 'TODAS';
   filterMonth: string = 'TODOS';
 
   form = this.fb.group({
     type: this.fb.control<MovementType>('INGRESO', Validators.required),
-    category: this.fb.control<MovementCategory>('VENTA', Validators.required),
+    category: this.fb.control<MovementCategory>('APORTACION', Validators.required),
     amount: this.fb.control<number | null>(null, [Validators.required, Validators.min(1)]),
     description: this.fb.control(''),
   });
@@ -68,8 +73,8 @@ export class Negocio implements OnInit {
     });
   }
 
-  private businessMovements(): Movement[] {
-    return this.movementService.movements().filter((m) => m.context === 'NEGOCIO');
+  private fondoMovements(): Movement[] {
+    return this.movementService.movements().filter((m) => m.context === 'FONDO');
   }
 
   categoriesForType(type: MovementType | null): CategoryOption[] {
@@ -91,7 +96,7 @@ export class Negocio implements OnInit {
       category: category!,
       amount: amount!,
       description: description || undefined,
-      context: 'NEGOCIO' as const,
+      context: 'FONDO' as const,
     };
 
     const request$ = this.editingId
@@ -118,12 +123,11 @@ export class Negocio implements OnInit {
       amount: mov.amount,
       description: mov.description ?? '',
     });
-    document.querySelector('.form-panel')?.scrollIntoView({ behavior: 'smooth' });
   }
 
   cancelEdit(): void {
     this.editingId = null;
-    this.form.reset({ type: 'INGRESO', category: 'VENTA', amount: null, description: '' });
+    this.form.reset({ type: 'INGRESO', category: 'APORTACION', amount: null, description: '' });
   }
 
   confirmDelete(mov: Movement): void {
@@ -167,34 +171,53 @@ export class Negocio implements OnInit {
       .reduce((sum, m) => sum + m.amount, 0);
   }
 
-  balanceNegocio(): number {
+  balanceFondo(): number {
     return this.totalIngresos() - this.totalGastos();
   }
 
   filteredMovements(): Movement[] {
-    return this.businessMovements().filter((mov) => {
+    return this.fondoMovements().filter((mov) => {
       const matchesType = this.filterType === 'TODOS' || mov.type === this.filterType;
-      const matchesCategory = this.filterCategory === 'TODAS' || mov.category === this.filterCategory;
       const matchesMonth = this.matchesMonth(mov);
-      return matchesType && matchesCategory && matchesMonth;
+      return matchesType && matchesMonth;
     });
   }
 
   onFilterTypeChange(value: string): void {
     this.filterType = value as HistoryFilter;
-    this.filterCategory = 'TODAS';
   }
 
-  categoriesForFilter(): CategoryOption[] {
-    if (this.filterType === 'INGRESO') return this.incomeCategories;
-    if (this.filterType === 'GASTO') return this.expenseCategories;
-    return this.allCategories;
+  categoryGroups(): CategoryGroup[] {
+    const groups: CategoryGroup[] = [];
+
+    for (const cat of this.allCategories) {
+      const movs = this.filteredMovements().filter((m) => m.category === cat.value);
+      if (movs.length === 0) continue;
+
+      const subtotal = movs.reduce((sum, m) => sum + (m.type === 'INGRESO' ? m.amount : -m.amount), 0);
+
+      groups.push({ category: cat.value, label: cat.label, movements: movs, subtotal });
+    }
+
+    return groups.sort((a, b) => Math.abs(b.subtotal) - Math.abs(a.subtotal));
+  }
+
+  toggleCategory(cat: MovementCategory): void {
+    if (this.expandedCategories.has(cat)) {
+      this.expandedCategories.delete(cat);
+    } else {
+      this.expandedCategories.add(cat);
+    }
+  }
+
+  isExpanded(cat: MovementCategory): boolean {
+    return this.expandedCategories.has(cat);
   }
 
   availableMonths(): MonthOption[] {
     const monthsSet = new Set<string>();
 
-    for (const mov of this.businessMovements()) {
+    for (const mov of this.fondoMovements()) {
       const fecha = new Date(mov.date);
       const key = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
       monthsSet.add(key);

@@ -4,6 +4,7 @@ import { ReactiveFormsModule, FormsModule, FormBuilder, Validators } from '@angu
 import { MovementService, MovementType, MovementCategory, Movement } from '../../services/movement.service';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { VOLTUM_LOGO_BASE64 } from './voltum-logo';
 
 interface CategoryOption {
   value: MovementCategory;
@@ -71,6 +72,11 @@ export class Personal implements OnInit {
     });
   }
 
+  // solo movimientos con contexto PERSONAL
+  private personalMovements(): Movement[] {
+    return this.movementService.movements().filter((m) => m.context === 'PERSONAL');
+  }
+
   categoriesForType(type: MovementType | null): CategoryOption[] {
     return type === 'INGRESO' ? this.incomeCategories : this.expenseCategories;
   }
@@ -90,6 +96,7 @@ export class Personal implements OnInit {
       category: category!,
       amount: amount!,
       description: description || undefined,
+      context: 'PERSONAL' as const,
     };
 
     const request$ = this.editingId
@@ -170,7 +177,7 @@ export class Personal implements OnInit {
   }
 
   filteredMovements(): Movement[] {
-    return this.movementService.movements().filter((mov) => {
+    return this.personalMovements().filter((mov) => {
       const matchesType = this.filterType === 'TODOS' || mov.type === this.filterType;
       const matchesCategory = this.filterCategory === 'TODAS' || mov.category === this.filterCategory;
       const matchesMonth = this.matchesMonth(mov);
@@ -192,7 +199,7 @@ export class Personal implements OnInit {
   availableMonths(): MonthOption[] {
     const monthsSet = new Set<string>();
 
-    for (const mov of this.movementService.movements()) {
+    for (const mov of this.personalMovements()) {
       const fecha = new Date(mov.date);
       const key = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
       monthsSet.add(key);
@@ -219,15 +226,52 @@ export class Personal implements OnInit {
     return key === this.filterMonth;
   }
 
+  private dibujarEncabezado(doc: jsPDF): void {
+    doc.addImage(VOLTUM_LOGO_BASE64, 'PNG', 14, 8, 46, 16.5);
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    doc.text('REPORTE DE MOVIMIENTOS', 196, 15, { align: 'right' });
+    doc.text('VOLTUM · TECNOLOGÍA FINANCIERA', 196, 20, { align: 'right' });
+    doc.setTextColor(0);
+
+    const colores: [number, number, number][] = [
+      [244, 183, 64], [242, 130, 61], [232, 80, 63], [61, 111, 242],
+    ];
+    const anchoFranja = 182 / colores.length;
+    colores.forEach((color, i) => {
+      doc.setFillColor(...color);
+      doc.rect(14 + i * anchoFranja, 29, anchoFranja, 1.2, 'F');
+    });
+  }
+
+  private dibujarPiePagina(doc: jsPDF, numeroPagina: number): void {
+    const alturaPagina = doc.internal.pageSize.getHeight();
+    doc.setDrawColor(220);
+    doc.line(14, alturaPagina - 15, 196, alturaPagina - 15);
+    doc.setFontSize(8);
+    doc.setTextColor(120);
+    doc.text('VOLTUM · Tecnología Financiera', 14, alturaPagina - 10);
+    doc.text(`PÁGINA ${numeroPagina}`, 196, alturaPagina - 10, { align: 'right' });
+    doc.setTextColor(0);
+  }
+
   exportarPDF(): void {
     const doc = new jsPDF();
+    this.dibujarEncabezado(doc);
 
-    doc.setFontSize(16);
-    doc.text('Historial de movimientos - Gestión', 14, 18);
+    doc.setFontSize(17);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Historial de movimientos personales', 14, 42);
+    doc.setFont('helvetica', 'normal');
 
-    doc.setFontSize(10);
-    doc.setTextColor(120);
-    doc.text(`Generado el ${new Date().toLocaleDateString('es-GT')}`, 14, 24);
+    doc.setDrawColor(242, 130, 61);
+    doc.setLineWidth(0.6);
+    doc.line(14, 45, 60, 45);
+    doc.setLineWidth(0.2);
+
+    doc.setFontSize(9.5);
+    doc.setTextColor(130);
+    doc.text(`Generado el ${new Date().toLocaleDateString('es-GT')}`, 14, 51);
     doc.setTextColor(0);
 
     const filas = this.filteredMovements().map((mov) => [
@@ -239,22 +283,55 @@ export class Personal implements OnInit {
     ]);
 
     autoTable(doc, {
-      startY: 30,
+      startY: 57,
       head: [['Fecha', 'Tipo', 'Categoría', 'Descripción', 'Monto']],
       body: filas,
-      headStyles: { fillColor: [242, 130, 61] },
-      styles: { fontSize: 9 },
+      theme: 'striped',
+      headStyles: { fillColor: [242, 130, 61], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'left' },
+      styles: { fontSize: 9, cellPadding: 4 },
+      alternateRowStyles: { fillColor: [248, 248, 248] },
+      columnStyles: { 4: { halign: 'right', fontStyle: 'bold' } },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index === 4) {
+          const esIngreso = String(data.cell.raw).startsWith('+');
+          data.cell.styles.textColor = esIngreso ? [79, 174, 130] : [232, 80, 63];
+        }
+      },
+      margin: { bottom: 25 },
+      didDrawPage: () => {
+        this.dibujarEncabezado(doc);
+        this.dibujarPiePagina(doc, doc.getNumberOfPages());
+      },
     });
 
-    const finalY = (doc as any).lastAutoTable?.finalY ?? 30;
+    const finalY = (doc as any).lastAutoTable?.finalY ?? 57;
 
-    doc.setFontSize(11);
-    doc.text(`Total ingresos: ${this.formatQ(this.totalIngresos())}`, 14, finalY + 12);
-    doc.text(`Total gastos: ${this.formatQ(this.totalGastos())}`, 14, finalY + 19);
+    const cajaY = finalY + 10;
+    doc.setDrawColor(230);
+    doc.setFillColor(250, 250, 250);
+    doc.roundedRect(14, cajaY, 182, 30, 2, 2, 'FD');
+
+    doc.setFontSize(10);
+    doc.setTextColor(90);
+    doc.text('Total ingresos', 22, cajaY + 9);
+    doc.text('Total gastos', 22, cajaY + 17);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Balance: ${this.formatQ(this.balancePersonal())}`, 14, finalY + 26);
+    doc.setFontSize(11);
+    doc.text('Balance', 22, cajaY + 25);
     doc.setFont('helvetica', 'normal');
 
-    doc.save('historial-gestion.pdf');
+    doc.setTextColor(79, 174, 130);
+    doc.text(this.formatQ(this.totalIngresos()), 188, cajaY + 9, { align: 'right' });
+    doc.setTextColor(232, 80, 63);
+    doc.text(this.formatQ(this.totalGastos()), 188, cajaY + 17, { align: 'right' });
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    const bal = this.balancePersonal();
+    doc.setTextColor(bal >= 0 ? 79 : 232, bal >= 0 ? 174 : 80, bal >= 0 ? 130 : 63);
+    doc.text(this.formatQ(bal), 188, cajaY + 25, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0);
+
+    doc.save('historial-personal.pdf');
   }
 }
