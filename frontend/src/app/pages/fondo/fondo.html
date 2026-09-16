@@ -38,8 +38,8 @@
 
     <input type="text" formControlName="description" placeholder="Descripción (opcional)" class="quick-input quick-description" />
 
-    <button type="submit" class="quick-submit" [disabled]="isSubmitting">
-      {{ isSubmitting ? '...' : (editingId ? 'Actualizar' : 'Agregar') }}
+    <button type="submit" class="quick-submit" [disabled]="isSubmitting()">
+      {{ isSubmitting() ? '...' : (editingId ? 'Actualizar' : 'Agregar') }}
     </button>
 
     @if (editingId) {
@@ -50,8 +50,8 @@
   @if (form.get('amount')?.touched && form.get('amount')?.invalid) {
     <span class="field-error">Ingresa un monto válido mayor a 0</span>
   }
-  @if (errorMessage) {
-    <div class="form-error">{{ errorMessage }}</div>
+  @if (errorMessage()) {
+    <div class="form-error">{{ errorMessage() }}</div>
   }
 </section>
 
@@ -91,7 +91,7 @@
           <span class="category-name">{{ group.label }}</span>
           <span class="category-count">{{ group.movements.length }} movimiento(s)</span>
           <span class="category-subtotal" [class.income]="group.subtotal >= 0" [class.expense]="group.subtotal < 0">
-            {{ group.subtotal >= 0 ? '+' : '' }}{{ formatQ(group.subtotal) }}
+            {{ formatQ(group.subtotal) }}
           </span>
         </button>
 
@@ -112,7 +112,7 @@
                   [class.income]="mov.type === 'INGRESO'"
                   [class.expense]="mov.type === 'GASTO'"
                 >
-                  {{ mov.type === 'INGRESO' ? '+' : '-' }}{{ formatQ(mov.amount) }}
+                  {{ formatQ(mov.amount) }}
                 </span>
                 <div class="category-row-actions">
                   <button type="button" (click)="startEdit(mov)">Editar</button>
