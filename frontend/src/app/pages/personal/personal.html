@@ -53,13 +53,13 @@
         <input id="description" type="text" formControlName="description" placeholder="ej. sueldo del mes" />
       </div>
 
-      @if (errorMessage) {
-        <div class="form-error">{{ errorMessage }}</div>
+      @if (errorMessage()) {
+        <div class="form-error">{{ errorMessage() }}</div>
       }
 
       <div class="form-actions">
-        <button type="submit" class="submit-btn" [disabled]="isSubmitting">
-          {{ isSubmitting ? 'Guardando...' : (editingId ? 'Actualizar' : 'Registrar') }}
+        <button type="submit" class="submit-btn" [disabled]="isSubmitting()">
+          {{ isSubmitting() ? 'Guardando...' : (editingId ? 'Actualizar' : 'Registrar') }}
         </button>
         @if (editingId) {
           <button type="button" class="cancel-btn" (click)="cancelEdit()">Cancelar</button>
@@ -133,7 +133,7 @@
                 [class.income]="mov.type === 'INGRESO'"
                 [class.expense]="mov.type === 'GASTO'"
               >
-                {{ mov.type === 'INGRESO' ? '+' : '-' }}{{ formatQ(mov.amount) }}
+                {{ formatQ(mov.amount) }}
               </span>
             </div>
 

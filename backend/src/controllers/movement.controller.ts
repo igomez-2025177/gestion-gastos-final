@@ -25,6 +25,27 @@ function isCategoryValid(type: MovementType, category: MovementCategory, context
   return CATEGORY_MAP[context][type].includes(category);
 }
 
+// suma todos los INGRESO y resta todos los GASTO de un contexto para saber
+// cuanto balance real hay disponible ahi. excludeMovementId sirve para cuando
+// se esta editando un movimiento existente, así no se cuenta a si mismo dos veces
+async function getContextBalance(
+  userId: string,
+  context: MovementContext,
+  excludeMovementId?: string
+): Promise<number> {
+  const movements = await prisma.movement.findMany({
+    where: {
+      userId,
+      context,
+      ...(excludeMovementId ? { id: { not: excludeMovementId } } : {}),
+    },
+  });
+
+  return movements.reduce((total, m) => {
+    return m.type === "INGRESO" ? total + m.amount : total - m.amount;
+  }, 0);
+}
+
 export async function createMovement(req: AuthRequest, res: Response) {
   try {
     const userId = req.user?.userId;
@@ -47,6 +68,16 @@ export async function createMovement(req: AuthRequest, res: Response) {
     const numericAmount = Number(amount);
     if (isNaN(numericAmount) || numericAmount <= 0) {
       return res.status(400).json({ error: "El monto debe ser un número mayor a 0" });
+    }
+
+    if (type === "GASTO") {
+      const currentBalance = await getContextBalance(userId!, finalContext);
+
+      if (numericAmount > currentBalance) {
+        return res.status(400).json({
+          error: `No puedes registrar este gasto: tu balance disponible en este contexto es Q${currentBalance.toFixed(2)}`,
+        });
+      }
     }
 
     const movement = await prisma.movement.create({
@@ -106,6 +137,18 @@ export async function updateMovement(req: AuthRequest, res: Response) {
     const numericAmount = amount !== undefined ? Number(amount) : existing.amount;
     if (isNaN(numericAmount) || numericAmount <= 0) {
       return res.status(400).json({ error: "El monto debe ser un número mayor a 0" });
+    }
+
+    if (finalType === "GASTO") {
+      // se excluye el propio movimiento del calculo, porque su version anterior
+      // ya está incluida en el historial y no debe contarse dos veces
+      const currentBalance = await getContextBalance(userId!, existing.context, id);
+
+      if (numericAmount > currentBalance) {
+        return res.status(400).json({
+          error: `No puedes registrar este gasto: tu balance disponible en este contexto es Q${currentBalance.toFixed(2)}`,
+        });
+      }
     }
 
     const movement = await prisma.movement.update({

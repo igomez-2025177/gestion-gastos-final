@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   AbstractControl,
@@ -25,8 +25,12 @@ function passwordsMatchValidator(group: AbstractControl): ValidationErrors | nul
 })
 export class Register {
   registerForm: FormGroup;
-  errorMessage = '';
-  isLoading = false;
+
+  // signals en vez de propiedades normales: en zoneless, Angular solo
+  // repinta la pantalla cuando cambia un signal()
+  errorMessage = signal('');
+  isLoading = signal(false);
+
   showPassword = false;
 
   constructor(
@@ -51,19 +55,19 @@ export class Register {
       return;
     }
 
-    this.errorMessage = '';
-    this.isLoading = true;
+    this.errorMessage.set('');
+    this.isLoading.set(true);
 
     const { name, email, password } = this.registerForm.value;
 
     this.authService.register(name, email, password).subscribe({
       next: () => {
-        this.isLoading = false;
+        this.isLoading.set(false);
         this.router.navigate(['/dashboard']);
       },
       error: (err) => {
-        this.isLoading = false;
-        this.errorMessage = err.error?.error || 'Ocurrió un error al crear la cuenta';
+        this.isLoading.set(false);
+        this.errorMessage.set(err.error?.error || 'Ocurrió un error al crear la cuenta');
       },
     });
   }

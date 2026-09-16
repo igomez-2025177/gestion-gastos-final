@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule, FormBuilder, Validators } from '@angular/forms';
 import { MovementService, MovementType, MovementCategory, Movement } from '../../services/movement.service';
@@ -42,8 +42,8 @@ export class Negocio implements OnInit {
 
   allCategories: CategoryOption[] = [...this.incomeCategories, ...this.expenseCategories];
 
-  isSubmitting = false;
-  errorMessage = '';
+  isSubmitting = signal(false);
+  errorMessage = signal('');
 
   editingId: string | null = null;
 
@@ -82,8 +82,8 @@ export class Negocio implements OnInit {
       return;
     }
 
-    this.isSubmitting = true;
-    this.errorMessage = '';
+    this.isSubmitting.set(true);
+    this.errorMessage.set('');
 
     const { type, category, amount, description } = this.form.getRawValue();
     const payload = {
@@ -100,12 +100,12 @@ export class Negocio implements OnInit {
 
     request$.subscribe({
       next: () => {
-        this.isSubmitting = false;
+        this.isSubmitting.set(false);
         this.cancelEdit();
       },
       error: (err) => {
-        this.isSubmitting = false;
-        this.errorMessage = err.error?.error || 'Error al guardar el movimiento';
+        this.isSubmitting.set(false);
+        this.errorMessage.set(err.error?.error || 'Error al guardar el movimiento');
       },
     });
   }
@@ -134,7 +134,7 @@ export class Negocio implements OnInit {
 
     this.movementService.delete(mov.id).subscribe({
       error: () => {
-        this.errorMessage = 'No se pudo eliminar el movimiento';
+        this.errorMessage.set('No se pudo eliminar el movimiento');
       },
     });
   }
@@ -192,26 +192,17 @@ export class Negocio implements OnInit {
   }
 
   availableMonths(): MonthOption[] {
-    const monthsSet = new Set<string>();
-
-    for (const mov of this.businessMovements()) {
-      const fecha = new Date(mov.date);
-      const key = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
-      monthsSet.add(key);
-    }
-
     const nombresMes = [
       'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
       'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
     ];
 
-    return Array.from(monthsSet)
-      .sort((a, b) => b.localeCompare(a))
-      .map((key) => {
-        const [year, month] = key.split('-');
-        const label = `${nombresMes[Number(month) - 1]} ${year}`;
-        return { value: key, label };
-      });
+    const anioActual = new Date().getFullYear();
+
+    return nombresMes.map((nombre, index) => ({
+      value: `${anioActual}-${String(index + 1).padStart(2, '0')}`,
+      label: `${nombre} ${anioActual}`,
+    }));
   }
 
   private matchesMonth(mov: Movement): boolean {
