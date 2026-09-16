@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
@@ -14,8 +14,12 @@ declare const google: any; // el SDK de Google se carga por <script> en index.ht
 })
 export class Login implements OnInit {
   loginForm: FormGroup;
-  errorMessage = '';
-  isLoading = false;
+
+  // signals en vez de propiedades normales: en zoneless, Angular solo
+  // repinta la pantalla cuando cambia un signal()
+  errorMessage = signal('');
+  isLoading = signal(false);
+
   sessionExpiredMessage = false;
   showPassword = false;
 
@@ -63,35 +67,35 @@ export class Login implements OnInit {
       return;
     }
 
-    this.errorMessage = '';
-    this.isLoading = true;
+    this.errorMessage.set('');
+    this.isLoading.set(true);
 
     const { email, password } = this.loginForm.value;
 
     this.authService.login(email, password).subscribe({
       next: () => {
-        this.isLoading = false;
+        this.isLoading.set(false);
         this.router.navigate(['/dashboard']);
       },
       error: (err) => {
-        this.isLoading = false;
-        this.errorMessage = err.error?.error || 'Ocurrió un error al iniciar sesión';
+        this.isLoading.set(false);
+        this.errorMessage.set(err.error?.error || 'Ocurrió un error al iniciar sesión');
       },
     });
   }
 
   handleGoogleLogin(response: any): void {
-    this.errorMessage = '';
-    this.isLoading = true;
+    this.errorMessage.set('');
+    this.isLoading.set(true);
 
     this.authService.googleLogin(response.credential).subscribe({
       next: () => {
-        this.isLoading = false;
+        this.isLoading.set(false);
         this.router.navigate(['/dashboard']);
       },
       error: (err) => {
-        this.isLoading = false;
-        this.errorMessage = err.error?.error || 'No se pudo iniciar sesión con Google';
+        this.isLoading.set(false);
+        this.errorMessage.set(err.error?.error || 'No se pudo iniciar sesión con Google');
       },
     });
   }

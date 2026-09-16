@@ -53,13 +53,13 @@
         <input id="description" type="text" formControlName="description" placeholder="ej. venta del día" />
       </div>
 
-      @if (errorMessage) {
-        <div class="form-error">{{ errorMessage }}</div>
+      @if (errorMessage()) {
+        <div class="form-error">{{ errorMessage() }}</div>
       }
 
       <div class="form-actions">
-        <button type="submit" class="submit-btn" [disabled]="isSubmitting">
-          {{ isSubmitting ? 'Guardando...' : (editingId ? 'Actualizar' : 'Registrar') }}
+        <button type="submit" class="submit-btn" [disabled]="isSubmitting()">
+          {{ isSubmitting() ? 'Guardando...' : (editingId ? 'Actualizar' : 'Registrar') }}
         </button>
         @if (editingId) {
           <button type="button" class="cancel-btn" (click)="cancelEdit()">Cancelar</button>
@@ -111,22 +111,20 @@
       <div class="history-list">
         @for (mov of filteredMovements(); track mov.id) {
           <div class="history-item">
-            <div class="history-main">
-              <div class="history-info">
-                <span class="history-category">{{ categoryLabel(mov.category) }}</span>
-                @if (mov.description) {
-                  <span class="history-description">{{ mov.description }}</span>
-                }
-                <span class="history-date">{{ formatDate(mov.date) }}</span>
-              </div>
-              <span
-                class="history-amount"
-                [class.income]="mov.type === 'INGRESO'"
-                [class.expense]="mov.type === 'GASTO'"
-              >
-                {{ mov.type === 'INGRESO' ? '+' : '-' }}{{ formatQ(mov.amount) }}
-              </span>
+            <div class="history-info">
+              <span class="history-category">{{ categoryLabel(mov.category) }}</span>
+              @if (mov.description) {
+                <span class="history-description">{{ mov.description }}</span>
+              }
+              <span class="history-date">{{ formatDate(mov.date) }}</span>
             </div>
+            <span
+              class="history-amount"
+              [class.income]="mov.type === 'INGRESO'"
+              [class.expense]="mov.type === 'GASTO'"
+            >
+              {{ formatQ(mov.amount) }}
+            </span>
 
             <div class="history-actions">
               <button type="button" class="action-btn edit" (click)="startEdit(mov)">Editar</button>

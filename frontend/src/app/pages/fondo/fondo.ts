@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormsModule, FormBuilder, Validators } from '@angular/forms';
 import { MovementService, MovementType, MovementCategory, Movement } from '../../services/movement.service';
@@ -46,8 +46,8 @@ export class Fondo implements OnInit {
 
   allCategories: CategoryOption[] = [...this.incomeCategories, ...this.expenseCategories];
 
-  isSubmitting = false;
-  errorMessage = '';
+  isSubmitting = signal(false);
+  errorMessage = signal('');
 
   editingId: string | null = null;
 
@@ -87,8 +87,8 @@ export class Fondo implements OnInit {
       return;
     }
 
-    this.isSubmitting = true;
-    this.errorMessage = '';
+    this.isSubmitting.set(true);
+    this.errorMessage.set('');
 
     const { type, category, amount, description } = this.form.getRawValue();
     const payload = {
@@ -105,12 +105,12 @@ export class Fondo implements OnInit {
 
     request$.subscribe({
       next: () => {
-        this.isSubmitting = false;
+        this.isSubmitting.set(false);
         this.cancelEdit();
       },
       error: (err) => {
-        this.isSubmitting = false;
-        this.errorMessage = err.error?.error || 'Error al guardar el movimiento';
+        this.isSubmitting.set(false);
+        this.errorMessage.set(err.error?.error || 'Error al guardar el movimiento');
       },
     });
   }
@@ -138,7 +138,7 @@ export class Fondo implements OnInit {
 
     this.movementService.delete(mov.id).subscribe({
       error: () => {
-        this.errorMessage = 'No se pudo eliminar el movimiento';
+        this.errorMessage.set('No se pudo eliminar el movimiento');
       },
     });
   }
@@ -214,27 +214,25 @@ export class Fondo implements OnInit {
     return this.expandedCategories.has(cat);
   }
 
+  // siempre genera los ultimos 12 meses contando desde hoy hacia atras,
+  // ordenados del mas viejo al mas reciente (enero antes que diciembre)
   availableMonths(): MonthOption[] {
-    const monthsSet = new Set<string>();
-
-    for (const mov of this.fondoMovements()) {
-      const fecha = new Date(mov.date);
-      const key = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
-      monthsSet.add(key);
-    }
-
     const nombresMes = [
       'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
       'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
     ];
 
-    return Array.from(monthsSet)
-      .sort((a, b) => b.localeCompare(a))
-      .map((key) => {
-        const [year, month] = key.split('-');
-        const label = `${nombresMes[Number(month) - 1]} ${year}`;
-        return { value: key, label };
-      });
+    const ahora = new Date();
+    const meses: MonthOption[] = [];
+
+    for (let i = 0; i < 12; i++) {
+      const fecha = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
+      const key = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
+      const label = `${nombresMes[fecha.getMonth()]} ${fecha.getFullYear()}`;
+      meses.push({ value: key, label });
+    }
+
+    return meses.reverse();
   }
 
   private matchesMonth(mov: Movement): boolean {

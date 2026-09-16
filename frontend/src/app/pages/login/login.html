@@ -61,12 +61,12 @@
           <span class="error-msg">Mínimo 6 caracteres.</span>
         </div>
 
-        @if (errorMessage) {
-          <div class="error-banner">{{ errorMessage }}</div>
+        @if (errorMessage()) {
+          <div class="error-banner">{{ errorMessage() }}</div>
         }
 
-        <button type="submit" class="btn-primary" [disabled]="isLoading">
-          {{ isLoading ? 'Ingresando...' : 'Ingresar' }}
+        <button type="submit" class="btn-primary" [disabled]="isLoading()">
+          {{ isLoading() ? 'Ingresando...' : 'Ingresar' }}
         </button>
 
         <div class="divider">o continúe con</div>

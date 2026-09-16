@@ -72,12 +72,12 @@
           </div>
         </div>
 
-        @if (errorMessage) {
-          <div class="error-banner">{{ errorMessage }}</div>
+        @if (errorMessage()) {
+          <div class="error-banner">{{ errorMessage() }}</div>
         }
 
-        <button type="submit" class="btn-primary" [disabled]="isLoading">
-          {{ isLoading ? 'Creando cuenta...' : 'Crear cuenta' }}
+        <button type="submit" class="btn-primary" [disabled]="isLoading()">
+          {{ isLoading() ? 'Creando cuenta...' : 'Crear cuenta' }}
         </button>
       </form>
 
